@@ -95,7 +95,7 @@ class Metasploit3 < Msf::Post
 
 		r.channel.write("exit\n")
 			
-		# delete the uac bypass payload
+		# clean up files 
 		print_status("Deleting executables")	
                 delete_exe = "cmd.exe /c del \"#{tmpdir}\\#{exe_filename}\""
 		delete_dll = "cmd.exe /c del \"#{tmpdir}\\#{dll_filename}\""	
