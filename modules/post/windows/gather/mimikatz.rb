@@ -16,7 +16,7 @@ class Metasploit3 < Msf::Post
                         },
                         'License'       => MSF_LICENSE,
                         'Author'        => [ 'Matt Andreko "hostess"' ],
-                        'Version'       => '$Revision: 14976 $',
+                        'Version'       => '$Revision$',
                         'Platform'      => [ 'windows' ],
                         'SessionTypes'  => [ 'meterpreter' ],
                         'References'    => [
@@ -153,7 +153,7 @@ class Metasploit3 < Msf::Post
 	end
 
 	def is_system_user?(user)
-		system_users = [/^$/, /^ASP\.NET V2\.0 Integrated$/, /^ANONYMOUS LOGON$/, /^IUSR.*/, /.*\$$/, /^LOCAL SERVICE$/]	
+		system_users = [/^$/, /^ASPNET$/, /^ASP\.NET V2\.0 Integrated$/, /^ANONYMOUS LOGON$/, /^IUSR.*/, /^IWAM.*/, /^IIS_WPG$/, /.*\$$/, /^LOCAL SERVICE$/, /^NETWORK SERVICE$/, /^LOCAL SYSTEM$/]	
 		return system_users.find{|r| user[:username].match(r)}
 	end
 
