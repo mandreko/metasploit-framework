@@ -13,11 +13,7 @@ class Metasploit3 < Msf::Auxiliary
 											'Description' => %q{
 																This module attempts to query a Cisco IP Phone to steal its entire contact list.
 												},
-											'Author' => ['Matt "hostess" Andreko <mandreko@accuvant.com>'],
-											'References' =>
-													[
-															['URL', 'http://www.mattandreko.com'],
-													]
+											'Author' => ['Matt "hostess" Andreko <mandreko@accuvant.com>']
 					))
 
 		register_options(
